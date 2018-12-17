@@ -1,2 +1,3 @@
 node_modules
-.DS_Store
+# .DS_Store # Ignore your crazy hidden OS files in your own damn environment!
+.env
