@@ -1,8 +1,71 @@
-import React from 'react'
-// import * as BooksAPI from './BooksAPI'
-import './App.css'
+import { Component } from 'react';
+import { Route } from 'react-router-dom';
+import * as BooksAPI from './BooksAPI';
+import './App.css';
 
-class BooksApp extends React.Component {
+class BookShelves extends Component {
+  render() {
+    return (
+      <div className="list-books-content">
+        <div>
+          // <BookShelf />
+          // <BookShelf />
+        </div>
+      </div>
+    );
+  }
+}
+
+class BookShelf extends Component {
+  render() {
+    return (
+      <div className='bookshelf'>
+        <h2 className="bookshelf-title">Currently Reading</h2>
+        // <BookGrid />
+        <div className="bookshelf-books"></div>
+      </div>
+    );
+  }
+}
+
+class BookGrid extends Component {
+  render() {
+    return (
+      <ol className='books-grid'>
+        // <Book />
+        // <Book />
+      </ol>
+    );
+  }
+}
+
+class Book extends Component {
+  render() {
+    return (
+      <div className='book'></div>
+    );
+  }
+}
+
+class BooksApp extends Component {
+  constructor(props){
+    super(props);
+    this.renderBookList = this.renderBookList.bind(this);
+  }
+
+  componentDidMount(){
+    let bookData = [];
+    BooksAPI.getAll().
+      then((books) => {
+        books.map(({ id, title, shelf }) => {
+          bookData.push({ id, title, shelf });
+
+          this.setState({
+            books: bookData
+          });
+        });
+      });
+  }
   state = {
     /**
      * TODO: Instead of using this state variable to keep track of which page
@@ -12,10 +75,15 @@ class BooksApp extends React.Component {
      */
     showSearchPage: false
   }
-
+  renderBookList() {
+    return (
+      <BookShelves />
+    );
+  }
   render() {
     return (
-      <div className="app">
+      <div className="books-app">
+        <Route exact path='/' render={renderBookList} />
         {this.state.showSearchPage ? (
           <div className="search-books">
             <div className="search-books-bar">
@@ -199,8 +267,8 @@ class BooksApp extends React.Component {
           </div>
         )}
       </div>
-    )
+    );
   }
 }
 
-export default BooksApp
+export default BooksApp;
