@@ -12,7 +12,7 @@ class BookShelves extends Component {
           Object.keys(this.props.shelves).map((shelf) => (
             <BookShelf
               key={shelf}
-              shelf={shelf}
+              shelf={this.props.shelves[shelf]}
               books={this.props.shelves[shelf].books}
               shelves={this.props.shelves}
             />
