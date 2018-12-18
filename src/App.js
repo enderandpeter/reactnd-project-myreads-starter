@@ -15,6 +15,7 @@ class BookShelves extends Component {
               shelf={this.props.shelves[shelf]}
               books={this.props.shelves[shelf].books}
               shelves={this.props.shelves}
+              moveBookToShelf={this.props.moveBookToShelf}
             />
           ))
         }
@@ -33,7 +34,11 @@ class BookShelf extends Component {
       <div className='bookshelf'>
         <h2 className="bookshelf-title">{this.props.shelf.name}</h2>
         <div className="bookshelf-books">
-          <BookGrid books={this.props.books} shelves={this.props.shelves} />
+          <BookGrid
+            books={this.props.books}
+            shelves={this.props.shelves}
+            moveBookToShelf={this.props.moveBookToShelf}
+          />
         </div>
       </div>
     );
@@ -46,7 +51,12 @@ class BookGrid extends Component {
       <ol className='books-grid'>
         {
           this.props.books.map((book) => (
-            <Book book={book} shelves={this.props.shelves} key={book.id} />
+            <Book
+              book={book}
+              shelves={this.props.shelves}
+              key={book.id}
+              moveBookToShelf={this.props.moveBookToShelf}
+            />
           ))
         }
       </ol>
@@ -55,6 +65,16 @@ class BookGrid extends Component {
 }
 
 class Book extends Component {
+  constructor(props){
+    super(props);
+    this.moveBookToShelf = this.moveBookToShelf.bind(this);
+  }
+  moveBookToShelf(event){
+    this.props.moveBookToShelf(
+      this.props.book,
+      event.target.options[event.target.selectedIndex].value
+    );
+  }
   render() {
     return (
       <li className='bookListItem'>
@@ -69,7 +89,7 @@ class Book extends Component {
             }}
             ></div>
           <div className="book-shelf-changer">
-            <select>
+            <select onChange={this.moveBookToShelf}>
               {
                 Object.keys(this.props.shelves).reduce((optionArray, shelfId) => {
                   optionArray.push(
@@ -100,7 +120,7 @@ class BookSearch extends Component {
     return (
       <div className="search-books">
         <div className="search-books-bar">
-          <button className="close-search">Close</button>
+          <Link to='/' className="close-search">Close</Link>
           <div className="search-books-input-wrapper">
             {/*
               NOTES: The search from BooksAPI is limited to a particular set of search terms.
@@ -127,6 +147,7 @@ class BooksApp extends Component {
     super(props);
     this.renderBookList = this.renderBookList.bind(this);
     this.renderSearch = this.renderSearch.bind(this);
+    this.moveBookToShelf = this.moveBookToShelf.bind(this);
   }
 
   state = { books: [] }
@@ -135,6 +156,21 @@ class BooksApp extends Component {
     BooksAPI.getAll()
       .then((books) => {
         this.setState({ books });
+      });
+  }
+
+  moveBookToShelf(book, shelf){
+    BooksAPI.update(book, shelf)
+      .then((response) => {
+        if(response[shelf].find((bookId) => (
+          bookId === book.id
+        )) !== undefined && shelf !== 'none'){
+          // The book was successfully moved
+          BooksAPI.getAll()
+            .then((books) => {
+              this.setState({ books });
+            });
+        }
       });
   }
 
@@ -166,7 +202,10 @@ class BooksApp extends Component {
 
   renderBookList() {
     return (
-      <BookShelves shelves={this.getShelves()} />
+      <BookShelves
+        shelves={this.getShelves()}
+        moveBookToShelf={this.moveBookToShelf}
+      />
     );
   }
 
@@ -178,7 +217,7 @@ class BooksApp extends Component {
   render() {
     return (
       <div className="books-app">
-        <Route exact path='/' render={this.renderBookList} />
+        <Route path='/' render={this.renderBookList} />
         <Route path='/search' render={this.renderSearch} />
       </div>
     );
