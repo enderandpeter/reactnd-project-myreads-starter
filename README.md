@@ -1,7 +1,7 @@
 # Instructions
 
-To launch this application, first checkout the `my-nanodegree` branch. Then...you know the drill! Either run
-`npm install && npm start` or `yarn install && yarn start`. Remember, only cool people use `yarn`.
+You know the drill! Either run `npm install && npm start` or `yarn install && yarn start`. Remember, only cool people
+use `yarn`.
 
 When the app first launches, you'll see your default books on their shelves. Click the arrow icon next to each book to
 move it to another shelf.
