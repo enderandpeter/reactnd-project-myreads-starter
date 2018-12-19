@@ -89,7 +89,7 @@ class Book extends Component {
             }}
             ></div>
           <div className="book-shelf-changer">
-            <select onChange={this.moveBookToShelf}>
+            <select onChange={this.moveBookToShelf} value={this.props.searchGrid ? 'none' : this.props.book.shelf}>
               {
                 Object.keys(this.props.shelves).reduce((optionArray, shelfId) => {
                   optionArray.push(
@@ -106,7 +106,9 @@ class Book extends Component {
          <div className="book-title">{this.props.book.title}</div>
          <div className="book-authors">
           {
-            this.props.book.authors.reduce((authorStringList, authorName) => `${authorStringList}, ${authorName}`)
+            this.props.book.authors.reduce(
+              (authorStringList, authorName) => `${authorStringList}, ${authorName}`
+            )
           }
          </div>
         </div>
@@ -116,11 +118,39 @@ class Book extends Component {
 }
 
 class BookSearch extends Component {
+  constructor(props){
+    super(props);
+
+    this.getSearchResults = this.getSearchResults.bind(this);
+    this.getBooks = this.getBooks.bind(this);
+    this.getSearchResults = this.getSearchResults.bind(this);
+  }
+
+  state = { query: '' }
+
+  componentDidMount() {
+    this.setState((currentState) => ({query: this.props.query}));
+  }
+
+  getSearchResults(event){
+    event.persist();
+    this.setState((currentState) => {
+      let query = event.target.value;
+      this.props.getSearchResults(query);
+
+      return { query };
+    });
+  }
+
+  getBooks(event){
+    this.props.getBooks(true);
+  }
+
   render(){
     return (
       <div className="search-books">
         <div className="search-books-bar">
-          <Link to='/' className="close-search">Close</Link>
+          <Link to='/' onClick={this.getBooks} className="close-search">Close</Link>
           <div className="search-books-input-wrapper">
             {/*
               NOTES: The search from BooksAPI is limited to a particular set of search terms.
@@ -130,12 +160,34 @@ class BookSearch extends Component {
               However, remember that the BooksAPI.search method DOES search by title or author. So, don't worry if
               you don't find a specific author or title. Every search is limited by search terms.
             */}
-            <input type="text" placeholder="Search by title or author"/>
+            <input type="text" onChange={this.getSearchResults} value={this.state.query} placeholder="Search by title or author"/>
 
           </div>
         </div>
         <div className="search-books-results">
           <ol className="books-grid"></ol>
+        </div>
+      </div>
+    );
+  }
+}
+
+class BookSearchGrid extends Component {
+  componentDidMount(){
+    this.props.setSearchState(true);
+    this.props.getSearchResults(this.props.query);
+  }
+
+  render() {
+    return (
+      <div className='bookshelf'>
+        <div className="bookshelf-books">
+          <BookGrid
+            books={this.props.books}
+            shelves={this.props.shelves}
+            moveBookToShelf={this.props.moveBookToShelf}
+            searchGrid={true}
+          />
         </div>
       </div>
     );
@@ -148,15 +200,35 @@ class BooksApp extends Component {
     this.renderBookList = this.renderBookList.bind(this);
     this.renderSearch = this.renderSearch.bind(this);
     this.moveBookToShelf = this.moveBookToShelf.bind(this);
+    this.getSearchResults = this.getSearchResults.bind(this);
+    this.getBooks = this.getBooks.bind(this);
+    this.setSearchState = this.setSearchState.bind(this);
   }
 
-  state = { books: [] }
+  state = { books: [], query: '', searchActive: false }
 
   componentDidMount() {
-    BooksAPI.getAll()
-      .then((books) => {
-        this.setState({ books });
-      });
+    this.getBooks();
+  }
+
+  getBooks(deactivateSearch = false){
+    this.setState((currentState) => {
+      if(deactivateSearch || !currentState.searchActive){
+        BooksAPI.getAll()
+          .then((books) => {
+            this.setState({ books });
+          }
+        );
+      }
+
+      return {
+        searchActive: false
+      };
+    });
+  }
+
+  setSearchState(active) {
+    this.setState(() => ({searchActive: active}));
   }
 
   moveBookToShelf(book, shelf){
@@ -164,32 +236,64 @@ class BooksApp extends Component {
       .then((response) => {
         if(response[shelf].find((bookId) => (
           bookId === book.id
-        )) !== undefined && shelf !== 'none'){
+        )) !== undefined){
           // The book was successfully moved
-          BooksAPI.getAll()
-            .then((books) => {
-              this.setState({ books });
-            });
+          this.getBooks();
         }
       });
   }
 
-  getShelves() {
+  getSearchResults(query){
+    this.setState((currentState) => {
+      let booksWithShelves = [];
+      BooksAPI.search(query)
+        .then((searchResultBooks) => {
+          let currentBooks = [];
+          BooksAPI.getAll()
+            .then((books) => {
+              currentBooks = books;
+          });
+
+          if(query){
+            booksWithShelves = searchResultBooks.map((searchResultBook) => {
+              let currentBookInResults = currentBooks.find(
+                (currentBook) => currentBook.id === searchResultBook.id
+              );
+
+              if(currentBookInResults){
+                searchResultBook.shelf = currentBookInResults.shelf;
+              }
+              return searchResultBook;
+            });
+          }
+
+          this.setState(() => ({
+              query: query,
+              searchActive: true,
+              books: booksWithShelves
+            }));
+        });
+    });
+
+  }
+
+  getShelves(addNone = false) {
     const getPrettyShelfName = this.getPrettyShelfName;
     let shelves = this.state.books.reduce(function(acc, curr){
       acc[curr.shelf] ? acc[curr.shelf].books.push(curr) : acc[curr.shelf] = {books: [curr]};
 
-      acc[curr.shelf].name = getPrettyShelfName(curr.shelf);
+      acc[curr.shelf].name = getPrettyShelfName(curr.shelf ? curr.shelf : 'none');
     	return acc;
     }, {});
 
-    if(!shelves['none']){
-      shelves['none'] = {
-        books: [],
-        name: 'None'
-      };
+    if(addNone){
+      if(!shelves['none']){
+        shelves['none'] = {
+          books: [],
+          name: 'None'
+        };
+      }
     }
-
     return shelves;
   }
 
@@ -211,13 +315,27 @@ class BooksApp extends Component {
 
   renderSearch(){
     return (
-      <BookSearch />
+      <div>
+        <BookSearch
+          query={this.state.query}
+          getBooks={this.getBooks}
+          getSearchResults={this.getSearchResults}
+        />
+        <BookSearchGrid
+          moveBookToShelf={this.moveBookToShelf}
+          books={this.state.books}
+          shelves={this.getShelves(true)}
+          query={this.state.query}
+          getSearchResults={this.getSearchResults}
+          setSearchState={this.setSearchState}
+        />
+      </div>
     );
   }
   render() {
     return (
       <div className="books-app">
-        <Route path='/' render={this.renderBookList} />
+        <Route exact path='/' render={this.renderBookList} />
         <Route path='/search' render={this.renderSearch} />
       </div>
     );
