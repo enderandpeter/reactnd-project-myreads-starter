@@ -1,3 +1,22 @@
+# Instructions
+
+To launch this application, you know the drill! Either run `npm install && npm start` or `yarn install && yarn start`.
+Remember, only cool people use `yarn`.
+
+When the app first launches, you'll see your default books on their shelves. Click the arrow icon next to each book to
+move it to another shelf.
+
+Click *Search for a Book* in the bottom right to go to the search page. You'll only see results when you enter a search
+term matched by a word in [SEACH_TERMS.md](SEACH_TERMS.md). On the search page, you can move a book to a shelf in the
+same way as the main page. Go back to the main page to see the book on your shelf.
+
+## Oddities I did not have time to adjust
+
+* The search bar partly covers the first row of search results.
+* The search query is not saved on page reloads (This doesn't appear to be a requirement)
+
+That is all... Happy Evaluating!
+
 # MyReads Project
 
 This is the starter template for the final assessment project for Udacity's React Fundamentals course. The goal of this template is to save you time by providing a static example of the CSS and HTML markup that may be used, but without any of the React code that is needed to complete the project. If you choose to start with this template, your job will be to add interactivity to the app by refactoring the static code in this template.

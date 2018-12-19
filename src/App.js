@@ -76,6 +76,8 @@ class Book extends Component {
     );
   }
   render() {
+    let backGroundImage = this.props.book.imageLinks && this.props.book.imageLinks.smallThumbnail ?
+      `url(${this.props.book.imageLinks.smallThumbnail})`: '';
     return (
       <li className='bookListItem'>
         <div className="book">
@@ -85,11 +87,11 @@ class Book extends Component {
             style={{
               width: 128,
               height: 193,
-              backgroundImage: `url(${this.props.book.imageLinks.smallThumbnail})`
+              backgroundImage: backGroundImage
             }}
             ></div>
           <div className="book-shelf-changer">
-            <select onChange={this.moveBookToShelf} value={this.props.searchGrid ? 'none' : this.props.book.shelf}>
+            <select onChange={this.moveBookToShelf} value={this.props.book.shelf ? this.props.book.shelf : 'none'}>
               {
                 Object.keys(this.props.shelves).reduce((optionArray, shelfId) => {
                   optionArray.push(
@@ -106,7 +108,7 @@ class Book extends Component {
          <div className="book-title">{this.props.book.title}</div>
          <div className="book-authors">
           {
-            this.props.book.authors.reduce(
+            this.props.book.authors && this.props.book.authors.reduce(
               (authorStringList, authorName) => `${authorStringList}, ${authorName}`
             )
           }
@@ -164,9 +166,6 @@ class BookSearch extends Component {
 
           </div>
         </div>
-        <div className="search-books-results">
-          <ol className="books-grid"></ol>
-        </div>
       </div>
     );
   }
@@ -174,7 +173,6 @@ class BookSearch extends Component {
 
 class BookSearchGrid extends Component {
   componentDidMount(){
-    this.props.setSearchState(true);
     this.props.getSearchResults(this.props.query);
   }
 
@@ -186,7 +184,6 @@ class BookSearchGrid extends Component {
             books={this.props.books}
             shelves={this.props.shelves}
             moveBookToShelf={this.props.moveBookToShelf}
-            searchGrid={true}
           />
         </div>
       </div>
@@ -202,79 +199,78 @@ class BooksApp extends Component {
     this.moveBookToShelf = this.moveBookToShelf.bind(this);
     this.getSearchResults = this.getSearchResults.bind(this);
     this.getBooks = this.getBooks.bind(this);
-    this.setSearchState = this.setSearchState.bind(this);
   }
 
-  state = { books: [], query: '', searchActive: false }
+  state = {
+    books: [],
+    searchResultBooks: [],
+    query: '',
+    searchActive: false
+  }
 
   componentDidMount() {
     this.getBooks();
   }
 
-  getBooks(deactivateSearch = false){
-    this.setState((currentState) => {
-      if(deactivateSearch || !currentState.searchActive){
-        BooksAPI.getAll()
-          .then((books) => {
-            this.setState({ books });
-          }
-        );
+  getBooks(){
+    BooksAPI.getAll()
+      .then((books) => {
+        this.setState({ books });
       }
-
-      return {
-        searchActive: false
-      };
-    });
-  }
-
-  setSearchState(active) {
-    this.setState(() => ({searchActive: active}));
+    );
   }
 
   moveBookToShelf(book, shelf){
     BooksAPI.update(book, shelf)
       .then((response) => {
-        if(response[shelf].find((bookId) => (
-          bookId === book.id
-        )) !== undefined){
           // The book was successfully moved
           this.getBooks();
-        }
-      });
+      }
+    );
+
+    if(this.state.searchActive){
+      this.getSearchResults(this.state.query);
+    }
   }
 
   getSearchResults(query){
-    this.setState((currentState) => {
-      let booksWithShelves = [];
+    let booksWithShelves = [];
+    if(query){
       BooksAPI.search(query)
         .then((searchResultBooks) => {
           let currentBooks = [];
           BooksAPI.getAll()
             .then((books) => {
               currentBooks = books;
-          });
 
-          if(query){
-            booksWithShelves = searchResultBooks.map((searchResultBook) => {
-              let currentBookInResults = currentBooks.find(
-                (currentBook) => currentBook.id === searchResultBook.id
-              );
+              if(!searchResultBooks.error){
+                booksWithShelves = searchResultBooks.map((searchResultBook) => {
+                  let currentBookInResults = currentBooks.find(
+                    (currentBook) => currentBook.id === searchResultBook.id
+                  );
 
-              if(currentBookInResults){
-                searchResultBook.shelf = currentBookInResults.shelf;
+                  if(currentBookInResults){
+                    searchResultBook.shelf = currentBookInResults.shelf;
+                  }
+                  return searchResultBook;
+                });
               }
-              return searchResultBook;
+
+              this.setState(() => ({
+                  query: query,
+                  searchActive: true,
+                  books: currentBooks,
+                  searchResultBooks: booksWithShelves
+                }));
             });
-          }
-
-          this.setState(() => ({
-              query: query,
-              searchActive: true,
-              books: booksWithShelves
-            }));
-        });
-    });
-
+          });
+    } else {
+      this.setState(() => ({
+          query: query,
+          searchActive: true,
+          searchResultBooks: booksWithShelves
+        }));
+    }
   }
 
   getShelves(addNone = false) {
@@ -323,11 +319,10 @@ class BooksApp extends Component {
         />
         <BookSearchGrid
           moveBookToShelf={this.moveBookToShelf}
-          books={this.state.books}
+          books={this.state.searchResultBooks}
           shelves={this.getShelves(true)}
           query={this.state.query}
           getSearchResults={this.getSearchResults}
-          setSearchState={this.setSearchState}
         />
       </div>
     );
